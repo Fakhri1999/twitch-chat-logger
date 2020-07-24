@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+  <title>Hello, world!</title>
+</head>
+
+<body>
+  <div class="container mt-3">
+    <div class="row">
+      <div class="col-12">
+        <h1 class="text-center">Hello, world!</h1>
+        <div class="form-group">
+          <label for="date">Tanggal</label>
+          <input type="text" class="form-control" id="date" aria-describedby="date">
+        </div>
+        <button id="submitBtn" class="btn btn-primary">Ambil Data</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-12">
+        <div class="overflow-auto bg-light mt-2 p-3" style="max-height: 60vh; width: 100%" id="chat">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Optional JavaScript -->
+  <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+  <script src="/js/jquery-3.5.1.min.js"></script>
+  <script src="/js/popper.min.js"></script>
+  <script src="/js/bootstrap.min.js"></script>
+  <script>
+    const baseUrl = window.location.origin;
+    $('#submitBtn').on('click', async function () {
+      let date = $("#date").val();
+      try {
+        let res = await $.get(`${baseUrl}/api/data`, { date });
+        let row = "";
+        let rowSplitted = ""
+        for (let i = 0; i < 50; i++) {
+          rowSplitted = res.data[i].split(":")
+          $("#chat").append(`<b>${rowSplitted[0]}</b> : ${rowSplitted[1]}<br>`)
+        }
+      } catch (error) {
+        let errorMessage = JSON.parse(error.responseText).message
+        alert(errorMessage)
+      }
+    })
+  </script>
+</body>
+
+</html>
