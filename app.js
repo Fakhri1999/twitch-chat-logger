@@ -1,62 +1,90 @@
 const express = require("express");
 const app = express();
-const PORT = 1231;
+const PORT = 80;
 const irc = require("irc");
 const axios = require("axios");
+const path = require('path');
+const fs = require('fs').promises;
+const moment = require('moment');
 require("dotenv").config();
+
 const { clientId, oauthToken, tmiToken } = process.env;
-const urlCallback = "https://1663909923aa.ngrok.io/twitch";
+const urlCallback = "https://d74891ac43d2.ngrok.io/twitch";
 
-// let client = new irc.Client('irc.chat.twitch.tv', 'Fakhri1999', {
-//   channels: ['#'],
-//   password: tmiToken
-// });
+const [formatFile] = ['.txt'];
 
-// client.addListener('message', function (from, to, message, data) {
-//   console.log(from + ' : ' + message);
-// });
+const dateNow = moment(new Date()).format('DD-MM-YYYY');
+const locationParent = path.join(process.cwd(), 'records');
+const locationFile = path.join(locationParent, dateNow + formatFile);
 
-// client.addListener('error', function(message) {
-//   console.log('error: ', message);
-// });
+let client = new irc.Client('irc.chat.twitch.tv', 'aldiwildan_', {
+  channels: ['#fl0m'],
+  password: tmiToken
+});
 
-try {
-  axios({
-    method: "POST",
-    url: "https://api.twitch.tv/helix/webhooks/hub",
-    headers: {
-      "Client-Id": clientId,
-      Authorization: `Bearer ${oauthToken}`
-    },
-    data: {
-      "hub.callback": urlCallback,
-      "hub.mode": "subscribe",
-      "hub.topic":
-        "https://api.twitch.tv/helix/users/follows?first=1&from_id=151872813",
-      // "hub.topic": "https://api.twitch.tv/helix/streams?user_id=151872813",
-      "hub.lease_seconds": "50000"
-    }
+client.addListener('message', function (from, to, message, data) {
+  const dataChunk = `${from}: ${message} \n`;
+  // messages.push(dataChunk);
+  fs.appendFile(locationFile, dataChunk);
+});
+
+client.addListener('error', function (message) {
+  console.log('error: ', message);
+});
+
+axios({
+  method: "POST",
+  url: "https://api.twitch.tv/helix/webhooks/hub",
+  headers: {
+    "Client-Id": clientId,
+    Authorization: `Bearer ${oauthToken}`
+  },
+  data: {
+    "hub.callback": urlCallback,
+    "hub.mode": "subscribe",
+    "hub.topic": "https://api.twitch.tv/helix/streams?user_id=156806450",
+    "hub.lease_seconds": "50000"
+  }
+})
+  .then(res => {
+    console.log(res.status);
   })
-    .then(res => {
-      console.log(res.status);
-    })
-    .catch(error => {
-      console.log(error.response.data);
-    });
-} catch (error) {
-  console.log(error);
-}
+  .catch(error => {
+    console.log(error.response.data);
+  });
+
+app.use(express.json());
 
 app.get("/twitch", (req, res) => {
   console.log(req.query);
   res.setHeader("content-type", "text/plain");
-  res.send(req.query["hub.callback"]);
+  res.send(req.query["hub.challenge"]);
 });
 
 app.post("/twitch", (req, res) => {
-  console.log(req.body);
-  // console.log(res);
-  res.status(200).json();
+  console.log(req.body)
+  res.status(200).json({
+    message: 'ok',
+  });
+});
+
+app.get('/records', async (req, res) => {
+  const query = req.query;
+
+  try {
+    if (!query) return res.status(400).json({ message: 'some params is missing' });
+
+    const file = await fs.readFile(path.join(locationParent, query.date + formatFile));
+    if (file.length == 0) return res.status(404).json({ message: 'file not found' });
+
+    const fileConverted = file.toString('utf8');
+    let arrayFile = fileConverted.split('\n');
+
+    res.status(200).json({ data: arrayFile });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ message: 'Internal Server Error' })
+  }
 });
 
 app.listen(PORT, () => {
