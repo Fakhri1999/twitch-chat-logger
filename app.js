@@ -4,8 +4,10 @@ const PORT = 80;
 const irc = require("irc");
 const axios = require("axios");
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');
+const fsPromises = require('fs').promises;
 const moment = require('moment');
+
 require("dotenv").config();
 
 const { clientId, oauthToken, tmiToken } = process.env;
@@ -24,8 +26,7 @@ let client = new irc.Client('irc.chat.twitch.tv', 'aldiwildan_', {
 
 client.addListener('message', function (from, to, message, data) {
   const dataChunk = `${from}: ${message} \n`;
-  // messages.push(dataChunk);
-  fs.appendFile(locationFile, dataChunk);
+  fsPromises.appendFile(locationFile, dataChunk, {});
 });
 
 client.addListener('error', function (message) {
@@ -74,7 +75,7 @@ app.get('/records', async (req, res) => {
   try {
     if (!query) return res.status(400).json({ message: 'some params is missing' });
 
-    const file = await fs.readFile(path.join(locationParent, query.date + formatFile));
+    const file = await fsPromises.readFile(path.join(locationParent, query.date + formatFile));
     if (file.length == 0) return res.status(404).json({ message: 'file not found' });
 
     const fileConverted = file.toString('utf8');
@@ -88,5 +89,8 @@ app.get('/records', async (req, res) => {
 });
 
 app.listen(PORT, () => {
+  if (!fs.existsSync(locationParent)) {
+    fs.mkdirSync(locationParent);
+  }
   console.log(`Server is running on http://localhost:${PORT}`);
 });
